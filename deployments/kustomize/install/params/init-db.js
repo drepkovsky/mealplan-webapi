@@ -54,6 +54,9 @@ for (let collection of neededCollections) {
   db.createCollection(collection);
   // create indexes
   db[collection].createIndex({ id: 1 });
+
+  if (collection !== "ambulance") continue;
+
   let result = db[collection].insertMany([
     {
       id: "bobulova",
@@ -65,13 +68,13 @@ for (let collection of neededCollections) {
       ],
     },
   ]);
-}
 
-//insert sample data
+  //insert sample data
 
-if (result.writeError) {
-  console.error(result);
-  print(`Error when writing the data: ${result.errmsg}`);
+  if (result.writeError) {
+    console.error(result);
+    print(`Error when writing the data: ${result.errmsg}`);
+  }
 }
 
 // exit with success
