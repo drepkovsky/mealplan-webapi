@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml
+- service.yaml
+
+configMapGenerator:
+- name: rrk-mealplan-webapi-mongodb-init
+  files:
+  - params/init-db.js
+- name: rrk-mealplan-webapi-config
+  literals:
+  - database=rrk-mealplan
+  - collection=meal,mealplan,patient,ambulance
+patches:
+- path: patches/webapi.deployment.yaml
+  target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: rrk-mealplan-webapi

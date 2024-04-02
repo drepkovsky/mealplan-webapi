@@ -1,0 +1,5 @@
+internal/mealplan/api_*
+internal/mealplan/model_*
+internal/mealplan/routers.go
+build/
+deployments/

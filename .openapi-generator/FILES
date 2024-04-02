@@ -1,0 +1,8 @@
+internal/mealplan/README.md
+internal/mealplan/api_ambulance_conditions.go
+internal/mealplan/api_ambulance_waiting_list.go
+internal/mealplan/api_ambulances.go
+internal/mealplan/model_ambulance.go
+internal/mealplan/model_condition.go
+internal/mealplan/model_waiting_list_entry.go
+internal/mealplan/routers.go
