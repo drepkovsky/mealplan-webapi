@@ -12,7 +12,7 @@ configMapGenerator:
 - name: rrk-mealplan-webapi-config
   literals:
   - database=rrk-mealplan
-  - collection=meal,mealplan,patient,ambulance
+  - collection=meal
 patches:
 - path: patches/webapi.deployment.yaml
   target:

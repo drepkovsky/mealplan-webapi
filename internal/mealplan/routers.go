@@ -1,7 +1,7 @@
 /*
- * MealPlan API
+ * Hospital Meal Plan Management API
  *
- * mealplan api
+ * API to manage meals, patients, and their meal plans in a hospital.
  *
  * API version: 1.0.0
  * Contact: <your_email>
@@ -18,17 +18,17 @@ func AddRoutes(engine *gin.Engine) {
   group := engine.Group("/api")
   
   {
-    api := newAmbulanceConditionsAPI()
+    api := newMealPlansAPI()
     api.addRoutes(group)
   }
   
   {
-    api := newAmbulanceWaitingListAPI()
+    api := newMealsAPI()
     api.addRoutes(group)
   }
   
   {
-    api := newAmbulancesAPI()
+    api := newPatientsAPI()
     api.addRoutes(group)
   }
   

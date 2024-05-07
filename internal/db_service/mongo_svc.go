@@ -16,230 +16,272 @@ import (
 )
 
 type DbService[DocType interface{}] interface {
-    CreateDocument(ctx context.Context, id string, document *DocType) error
-    FindDocument(ctx context.Context, id string) (*DocType, error)
-    UpdateDocument(ctx context.Context, id string, document *DocType) error
-    DeleteDocument(ctx context.Context, id string) error
-    Disconnect(ctx context.Context) error
+	CreateDocument(ctx context.Context, id string, document *DocType) error
+	FindDocument(ctx context.Context, id string) (*DocType, error)
+	UpdateDocument(ctx context.Context, id string, document *DocType) error
+	DeleteDocument(ctx context.Context, id string) error
+	ListDocuments(ctx context.Context, filter bson.D) ([]*DocType, error)
+	Disconnect(ctx context.Context) error
 }
 
 var ErrNotFound = fmt.Errorf("document not found")
 var ErrConflict = fmt.Errorf("conflict: document already exists")
 
 type MongoServiceConfig struct {
-    ServerHost string
-    ServerPort int
-    UserName   string
-    Password   string
-    DbName     string
-    Collection string
-    Timeout    time.Duration
+	ServerHost string
+	ServerPort int
+	UserName   string
+	Password   string
+	DbName     string
+	Collection string
+	Timeout    time.Duration
 }
 
 type mongoSvc[DocType interface{}] struct {
-    MongoServiceConfig
-    client     atomic.Pointer[mongo.Client]
-    clientLock sync.Mutex
+	MongoServiceConfig
+	client     atomic.Pointer[mongo.Client]
+	clientLock sync.Mutex
 }
 
 func NewMongoService[DocType interface{}](config MongoServiceConfig) DbService[DocType] {
-    enviro := func(name string, defaultValue string) string {
-        if value, ok := os.LookupEnv(name); ok {
-            return value
-        }
-        return defaultValue
-    }
+	enviro := func(name string, defaultValue string) string {
+		if value, ok := os.LookupEnv(name); ok {
+			return value
+		}
+		return defaultValue
+	}
 
-    svc := &mongoSvc[DocType]{}
-    svc.MongoServiceConfig = config
+	svc := &mongoSvc[DocType]{}
+	svc.MongoServiceConfig = config
 
-    if svc.ServerHost == "" {
-        svc.ServerHost = enviro("MEALPLAN_API_MONGODB_HOST", "localhost")
-    }
+	if svc.ServerHost == "" {
+		svc.ServerHost = enviro("MEALPLAN_API_MONGODB_HOST", "localhost")
+	}
 
-    if svc.ServerPort == 0 {
-        port := enviro("MEALPLAN_API_MONGODB_PORT", "27017")
-        if port, err := strconv.Atoi(port); err == nil {
-            svc.ServerPort = port
-        } else {
-            log.Printf("Invalid port value: %v", port)
-            svc.ServerPort = 27017
-        }
-    }
+	if svc.ServerPort == 0 {
+		port := enviro("MEALPLAN_API_MONGODB_PORT", "27017")
+		if port, err := strconv.Atoi(port); err == nil {
+			svc.ServerPort = port
+		} else {
+			log.Printf("Invalid port value: %v", port)
+			svc.ServerPort = 27017
+		}
+	}
 
-    if svc.UserName == "" {
-        svc.UserName = enviro("MEALPLAN_API_MONGODB_USERNAME", "")
-    }
+	if svc.UserName == "" {
+		svc.UserName = enviro("MEALPLAN_API_MONGODB_USERNAME", "")
+	}
 
-    if svc.Password == "" {
-        svc.Password = enviro("MEALPLAN_API_MONGODB_PASSWORD", "")
-    }
+	if svc.Password == "" {
+		svc.Password = enviro("MEALPLAN_API_MONGODB_PASSWORD", "")
+	}
 
-    if svc.DbName == "" {
-        svc.DbName = enviro("MEALPLAN_API_MONGODB_DATABASE", "rrk-mealplan")
-    }
+	if svc.DbName == "" {
+		svc.DbName = enviro("MEALPLAN_API_MONGODB_DATABASE", "rrk-mealplan")
+	}
 
-    if svc.Collection == "" {
-        svc.Collection = enviro("MEALPLAN_API_MONGODB_COLLECTION", "meal,mealplan,patient,ambulance")
-    }
+	if svc.Collection == "" {
+		svc.Collection = enviro("MEALPLAN_API_MONGODB_COLLECTION", "meal")
+	}
 
-    if svc.Timeout == 0 {
-        seconds := enviro("MEALPLAN_API_MONGODB_TIMEOUT_SECONDS", "10")
-        if seconds, err := strconv.Atoi(seconds); err == nil {
-            svc.Timeout = time.Duration(seconds) * time.Second
-        } else {
-            log.Printf("Invalid timeout value: %v", seconds)
-            svc.Timeout = 10 * time.Second
-        }
-    }
+	if svc.Timeout == 0 {
+		seconds := enviro("MEALPLAN_API_MONGODB_TIMEOUT_SECONDS", "10")
+		if seconds, err := strconv.Atoi(seconds); err == nil {
+			svc.Timeout = time.Duration(seconds) * time.Second
+		} else {
+			log.Printf("Invalid timeout value: %v", seconds)
+			svc.Timeout = 10 * time.Second
+		}
+	}
 
-    log.Printf(
-        "MongoDB config: //%v@%v:%v/%v/%v",
-        svc.UserName,
-        svc.ServerHost,
-        svc.ServerPort,
-        svc.DbName,
-        svc.Collection,
-    )
-    return svc
+	log.Printf(
+		"MongoDB config: //%v@%v:%v/%v/%v",
+		svc.UserName,
+		svc.ServerHost,
+		svc.ServerPort,
+		svc.DbName,
+		svc.Collection,
+	)
+	return svc
 }
 
 func (this *mongoSvc[DocType]) connect(ctx context.Context) (*mongo.Client, error) {
-    // optimistic check
-    client := this.client.Load()
-    if client != nil {
-        return client, nil
-    }
+	// optimistic check
+	client := this.client.Load()
+	if client != nil {
+		return client, nil
+	}
 
-    this.clientLock.Lock()
-    defer this.clientLock.Unlock()
-    // pesimistic check
-    client = this.client.Load()
-    if client != nil {
-        return client, nil
-    }
+	this.clientLock.Lock()
+	defer this.clientLock.Unlock()
+	// pesimistic check
+	client = this.client.Load()
+	if client != nil {
+		return client, nil
+	}
 
-    ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
-    defer contextCancel()
+	ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
+	defer contextCancel()
 
-    var uri = fmt.Sprintf("mongodb://%v:%v", this.ServerHost, this.ServerPort)
-    log.Printf("Using URI: " + uri)
+	var uri = fmt.Sprintf("mongodb://%v:%v", this.ServerHost, this.ServerPort)
+	log.Printf("Using URI: " + uri)
 
-    if len(this.UserName) != 0 {
-        uri = fmt.Sprintf("mongodb://%v:%v@%v:%v", this.UserName, this.Password, this.ServerHost, this.ServerPort)
-    }
+	if len(this.UserName) != 0 {
+		uri = fmt.Sprintf("mongodb://%v:%v@%v:%v", this.UserName, this.Password, this.ServerHost, this.ServerPort)
+	}
 
-    if client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri).SetConnectTimeout(10*time.Second)); err != nil {
-        return nil, err
-    } else {
-        this.client.Store(client)
-        return client, nil
-    }
+	if client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri).SetConnectTimeout(10*time.Second)); err != nil {
+		return nil, err
+	} else {
+		this.client.Store(client)
+		return client, nil
+	}
 }
 
 func (this *mongoSvc[DocType]) Disconnect(ctx context.Context) error {
-    client := this.client.Load()
+	client := this.client.Load()
 
-    if client != nil {
-        this.clientLock.Lock()
-        defer this.clientLock.Unlock()
+	if client != nil {
+		this.clientLock.Lock()
+		defer this.clientLock.Unlock()
 
-        client = this.client.Load()
-        defer this.client.Store(nil)
-        if client != nil {
-            if err := client.Disconnect(ctx); err != nil {
-                return err
-            }
-        }
-    }
-    return nil
+		client = this.client.Load()
+		defer this.client.Store(nil)
+		if client != nil {
+			if err := client.Disconnect(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (this *mongoSvc[DocType]) CreateDocument(ctx context.Context, id string, document *DocType) error {
-    ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
-    defer contextCancel()
-    client, err := this.connect(ctx)
-    if err != nil {
-        return err
-    }
-    db := client.Database(this.DbName)
-    collection := db.Collection(this.Collection)
-    result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
-    switch result.Err() {
-    case nil: // no error means there is conflicting document
-        return ErrConflict
-    case mongo.ErrNoDocuments:
-        // do nothing, this is expected
-    default: // other errors - return them
-        return result.Err()
-    }
+	ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
+	defer contextCancel()
+	client, err := this.connect(ctx)
+	if err != nil {
+		return err
+	}
+	db := client.Database(this.DbName)
+	collection := db.Collection(this.Collection)
+	result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
+	switch result.Err() {
+	case nil: // no error means there is conflicting document
+		return ErrConflict
+	case mongo.ErrNoDocuments:
+		// do nothing, this is expected
+	default: // other errors - return them
+		return result.Err()
+	}
 
-    _, err = collection.InsertOne(ctx, document)
-    return err
+	_, err = collection.InsertOne(ctx, document)
+	return err
 }
 
 func (this *mongoSvc[DocType]) FindDocument(ctx context.Context, id string) (*DocType, error) {
-    ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
-    defer contextCancel()
-    client, err := this.connect(ctx)
-    if err != nil {
-        return nil, err
-    }
-    db := client.Database(this.DbName)
-    collection := db.Collection(this.Collection)
-    result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
-    switch result.Err() {
-    case nil:
-    case mongo.ErrNoDocuments:
-        return nil, ErrNotFound
-    default: // other errors - return them
-        return nil, result.Err()
-    }
-    var document *DocType
-    if err := result.Decode(&document); err != nil {
-        return nil, err
-    }
-    return document, nil
+	ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
+	defer contextCancel()
+	client, err := this.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	db := client.Database(this.DbName)
+	collection := db.Collection(this.Collection)
+	result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
+	switch result.Err() {
+	case nil:
+	case mongo.ErrNoDocuments:
+		return nil, ErrNotFound
+	default: // other errors - return them
+		return nil, result.Err()
+	}
+	var document *DocType
+	if err := result.Decode(&document); err != nil {
+		return nil, err
+	}
+	return document, nil
 }
 
 func (this *mongoSvc[DocType]) UpdateDocument(ctx context.Context, id string, document *DocType) error {
-    ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
-    defer contextCancel()
-    client, err := this.connect(ctx)
-    if err != nil {
-        return err
-    }
-    db := client.Database(this.DbName)
-    collection := db.Collection(this.Collection)
-    result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
-    switch result.Err() {
-    case nil:
-    case mongo.ErrNoDocuments:
-        return ErrNotFound
-    default: // other errors - return them
-        return result.Err()
-    }
-    _, err = collection.ReplaceOne(ctx, bson.D{{Key: "id", Value: id}}, document)
-    return err
+	ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
+	defer contextCancel()
+	client, err := this.connect(ctx)
+	if err != nil {
+		return err
+	}
+	db := client.Database(this.DbName)
+	collection := db.Collection(this.Collection)
+	result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
+	switch result.Err() {
+	case nil:
+	case mongo.ErrNoDocuments:
+		return ErrNotFound
+	default: // other errors - return them
+		return result.Err()
+	}
+	_, err = collection.ReplaceOne(ctx, bson.D{{Key: "id", Value: id}}, document)
+	return err
 }
 
 func (this *mongoSvc[DocType]) DeleteDocument(ctx context.Context, id string) error {
-    ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
-    defer contextCancel()
-    client, err := this.connect(ctx)
-    if err != nil {
-        return err
-    }
-    db := client.Database(this.DbName)
-    collection := db.Collection(this.Collection)
-    result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
-    switch result.Err() {
-    case nil:
-    case mongo.ErrNoDocuments:
-        return ErrNotFound
-    default: // other errors - return them
-        return result.Err()
-    }
-    _, err = collection.DeleteOne(ctx, bson.D{{Key: "id", Value: id}})
-    return err
+	ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
+	defer contextCancel()
+	client, err := this.connect(ctx)
+	if err != nil {
+		return err
+	}
+	db := client.Database(this.DbName)
+	collection := db.Collection(this.Collection)
+	result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
+	switch result.Err() {
+	case nil:
+	case mongo.ErrNoDocuments:
+		return ErrNotFound
+	default: // other errors - return them
+		return result.Err()
+	}
+	_, err = collection.DeleteOne(ctx, bson.D{{Key: "id", Value: id}})
+	return err
+}
+
+// ListDocuments retrieves all documents from a MongoDB collection based on the provided filter.
+// The function returns an array of pointers to decoded documents of type DocType.
+func (this *mongoSvc[DocType]) ListDocuments(ctx context.Context, filter bson.D) ([]*DocType, error) {
+	// Set a timeout context
+	ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
+	defer contextCancel()
+
+	// Connect to the database
+	client, err := this.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the appropriate collection
+	collection := client.Database(this.DbName).Collection(this.Collection)
+
+	// Find the documents based on the provided filter
+	result, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close(ctx)
+
+	// Decode documents into a slice of pointers
+	var documents []*DocType
+	for result.Next(ctx) {
+		var document DocType
+		if err := result.Decode(&document); err != nil {
+			return nil, err
+		}
+		documents = append(documents, &document)
+	}
+
+	// Check for any errors during iteration
+	if err := result.Err(); err != nil {
+		return nil, err
+	}
+
+	return documents, nil
 }

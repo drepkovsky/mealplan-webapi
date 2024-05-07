@@ -1,11 +1,11 @@
-const mongoHost = process.env.MEALPLAN_API_MONGODB_HOST;
-const mongoPort = process.env.MEALPLAN_API_MONGODB_PORT;
+const mongoHost = process.env.AMBULANCE_API_MONGODB_HOST;
+const mongoPort = process.env.AMBULANCE_API_MONGODB_PORT;
 
-const mongoUser = process.env.MEALPLAN_API_MONGODB_USERNAME;
-const mongoPassword = process.env.MEALPLAN_API_MONGODB_PASSWORD;
+const mongoUser = process.env.AMBULANCE_API_MONGODB_USERNAME;
+const mongoPassword = process.env.AMBULANCE_API_MONGODB_PASSWORD;
 
-const database = process.env.MEALPLAN_API_MONGODB_DATABASE;
-const collectionsToCreate = process.env.MEALPLAN_API_MONGODB_COLLECTION;
+const database = process.env.AMBULANCE_API_MONGODB_DATABASE;
+const collection = process.env.AMBULANCE_API_MONGODB_COLLECTION;
 
 const retrySeconds = parseInt(process.env.RETRY_CONNECTION_SECONDS || "5") || 5;
 
@@ -26,23 +26,13 @@ while (true) {
 
 // if database and collection exists, exit with success - already initialized
 const databases = connection.getDBNames();
-
-const neededCollections = [];
 if (databases.includes(database)) {
   const dbInstance = connection.getDB(database);
   collections = dbInstance.getCollectionNames();
-  const arrCollections = collectionsToCreate.split(",");
-  for (let collection of arrCollections) {
-    if (collections.includes(collection)) {
-      print(
-        `Collection '${collection}' already exists in database '${database}'`
-      );
-      // process.exit(0);
-    } else neededCollections.push(collection);
-  }
-
-  if (neededCollections.length === 0) {
-    print(`All collections already exists in database '${database}'`);
+  if (collections.includes(collection)) {
+    print(
+      `Collection '${collection}' already exists in database '${database}'`
+    );
     process.exit(0);
   }
 }
@@ -50,31 +40,17 @@ if (databases.includes(database)) {
 // initialize
 // create database and collection
 const db = connection.getDB(database);
-for (let collection of neededCollections) {
-  db.createCollection(collection);
-  // create indexes
-  db[collection].createIndex({ id: 1 });
+db.createCollection(collection);
 
-  if (collection !== "ambulance") continue;
+// create indexes
+db[collection].createIndex({ id: 1 });
 
-  let result = db[collection].insertMany([
-    {
-      id: "bobulova",
-      name: "Dr.Bobulová",
-      roomNumber: "123",
-      predefinedConditions: [
-        { value: "Nádcha", code: "rhinitis" },
-        { value: "Kontrola", code: "checkup" },
-      ],
-    },
-  ]);
+//insert sample data
+// let result = db[collection].insertMany([]);Ø
 
-  //insert sample data
-
-  if (result.writeError) {
-    console.error(result);
-    print(`Error when writing the data: ${result.errmsg}`);
-  }
+if (result.writeError) {
+  console.error(result);
+  print(`Error when writing the data: ${result.errmsg}`);
 }
 
 // exit with success
