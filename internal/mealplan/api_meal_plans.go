@@ -49,7 +49,7 @@ func (this *implMealPlansAPI) addRoutes(routerGroup *gin.RouterGroup) {
 	routerGroup.Handle(http.MethodPost, "/meal-plans", this.CreateMealPlan)
 	routerGroup.Handle(http.MethodDelete, "/meal-plans/:mealPlanId", this.DeleteMealPlan)
 	routerGroup.Handle(http.MethodGet, "/meal-plans/:mealPlanId", this.GetMealPlan)
-	routerGroup.Handle(http.MethodGet, "/meal-plans/:patientId", this.ListMealPlans)
+	routerGroup.Handle(http.MethodGet, "/meal-plans/patient/:patientId", this.ListMealPlans)
 	routerGroup.Handle(http.MethodPut, "/meal-plans/:mealPlanId", this.UpdateMealPlan)
 }
 
