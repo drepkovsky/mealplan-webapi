@@ -162,7 +162,7 @@ func (this *implMealsAPI) GetMeal(ctx *gin.Context) {
 	}
 
 	mealID := ctx.Param("mealId")
-	meal, err := db.FindDocument(ctx, mealID)
+	meal, err := db.FindDocument(ctx, bson.D{{Key: "id", Value: mealID}})
 
 	switch err {
 	case nil:

@@ -17,7 +17,7 @@ import (
 
 type DbService[DocType interface{}] interface {
 	CreateDocument(ctx context.Context, id string, document *DocType) error
-	FindDocument(ctx context.Context, id string) (*DocType, error)
+	FindDocument(ctx context.Context, filter bson.D) (*DocType, error)
 	UpdateDocument(ctx context.Context, id string, document *DocType) error
 	DeleteDocument(ctx context.Context, id string) error
 	ListDocuments(ctx context.Context, filter bson.D) ([]*DocType, error)
@@ -179,7 +179,7 @@ func (this *mongoSvc[DocType]) CreateDocument(ctx context.Context, id string, do
 	return err
 }
 
-func (this *mongoSvc[DocType]) FindDocument(ctx context.Context, id string) (*DocType, error) {
+func (this *mongoSvc[DocType]) FindDocument(ctx context.Context, filter bson.D) (*DocType, error) {
 	ctx, contextCancel := context.WithTimeout(ctx, this.Timeout)
 	defer contextCancel()
 	client, err := this.connect(ctx)
@@ -188,7 +188,7 @@ func (this *mongoSvc[DocType]) FindDocument(ctx context.Context, id string) (*Do
 	}
 	db := client.Database(this.DbName)
 	collection := db.Collection(this.Collection)
-	result := collection.FindOne(ctx, bson.D{{Key: "id", Value: id}})
+	result := collection.FindOne(ctx, filter)
 	switch result.Err() {
 	case nil:
 	case mongo.ErrNoDocuments:

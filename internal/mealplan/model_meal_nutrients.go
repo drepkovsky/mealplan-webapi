@@ -12,6 +12,7 @@ package mealplan
 
 // MealNutrients - Nutritional content per serving
 type MealNutrients struct {
+
 	Fats float32 `json:"fats,omitempty"`
 
 	Carbohydrates float32 `json:"carbohydrates,omitempty"`

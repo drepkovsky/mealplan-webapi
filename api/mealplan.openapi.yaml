@@ -250,11 +250,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MealPlan'
+  '/meal-plans/{patientId}':
     get:
       tags:
       - Meal Plans
-      summary: List all meal plans
+      summary: List all meal plans for given patient
       operationId: listMealPlans
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
         '200':
           description: A list of meal plans

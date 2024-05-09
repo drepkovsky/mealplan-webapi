@@ -37,9 +37,9 @@ func main() {
 	engine.Use(corsMiddleware)
 
 	// setup context update  middleware
-	mealService := db_service.NewMongoService[mealplan.Meal](db_service.MongoServiceConfig{})
-	patientService := db_service.NewMongoService[mealplan.Patient](db_service.MongoServiceConfig{})
-	mealPlanService := db_service.NewMongoService[mealplan.MealPlan](db_service.MongoServiceConfig{})
+	mealService := db_service.NewMongoService[mealplan.Meal](db_service.MongoServiceConfig{Collection: "meal"})
+	patientService := db_service.NewMongoService[mealplan.Patient](db_service.MongoServiceConfig{Collection: "patient"})
+	mealPlanService := db_service.NewMongoService[mealplan.MealPlan](db_service.MongoServiceConfig{Collection: "mealplan"})
 	defer mealService.Disconnect(context.Background())
 	defer patientService.Disconnect(context.Background())
 	defer mealPlanService.Disconnect(context.Background())
