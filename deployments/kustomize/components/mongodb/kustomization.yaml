@@ -11,8 +11,8 @@ configMapGenerator:
   options:
     disableNameSuffixHash: true
   literals:
-    - host=mongodb
-    - port=27017
+  - host=mongodb
+  - port=27017
 
 secretGenerator:
 - name: mongodb-auth

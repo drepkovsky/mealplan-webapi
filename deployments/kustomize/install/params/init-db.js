@@ -1,11 +1,11 @@
-const mongoHost = process.env.AMBULANCE_API_MONGODB_HOST;
-const mongoPort = process.env.AMBULANCE_API_MONGODB_PORT;
+const mongoHost = process.env.MEALPLAN_API_MONGODB_HOST;
+const mongoPort = process.env.MEALPLAN_API_MONGODB_PORT;
 
-const mongoUser = process.env.AMBULANCE_API_MONGODB_USERNAME;
-const mongoPassword = process.env.AMBULANCE_API_MONGODB_PASSWORD;
+const mongoUser = process.env.MEALPLAN_API_MONGODB_USERNAME;
+const mongoPassword = process.env.MEALPLAN_API_MONGODB_PASSWORD;
 
-const database = process.env.AMBULANCE_API_MONGODB_DATABASE;
-const collection = process.env.AMBULANCE_API_MONGODB_COLLECTION;
+const database = process.env.MEALPLAN_API_MONGODB_DATABASE;
+const collection = process.env.MEALPLAN_API_MONGODB_COLLECTION;
 
 const retrySeconds = parseInt(process.env.RETRY_CONNECTION_SECONDS || "5") || 5;
 
