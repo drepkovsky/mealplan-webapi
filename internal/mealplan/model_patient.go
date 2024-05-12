@@ -16,7 +16,7 @@ type Patient struct {
 	FullName string `json:"fullName"`
 
 	// Unique identifier for the patient
-	Id string `json:"id"`
+	PatientId string `json:"patientId,omitempty"`
 
 	// Age of the patient
 	Age int32 `json:"age"`
