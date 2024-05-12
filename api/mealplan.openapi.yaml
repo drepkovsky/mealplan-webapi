@@ -384,7 +384,7 @@ components:
         fullName:
           type: string
           description: Full name of the patient
-        patientId:
+        id:
           type: string
           description: Unique identifier for the patient
         age:
