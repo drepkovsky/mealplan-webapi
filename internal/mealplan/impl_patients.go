@@ -48,11 +48,11 @@ func (this *implPatientsAPI) CreatePatient(ctx *gin.Context) {
 		return
 	}
 
-	if patient.PatientId != "" {
-		patient.PatientId = uuid.New().String()
+	if patient.Id != "" {
+		patient.Id = uuid.New().String()
 	}
 
-	err = db.CreateDocument(ctx, patient.PatientId, &patient)
+	err = db.CreateDocument(ctx, patient.Id, &patient)
 
 	switch err {
 	case nil:
@@ -161,7 +161,7 @@ func (this *implPatientsAPI) GetPatient(ctx *gin.Context) {
 	}
 
 	patientID := ctx.Param("patientId")
-	patient, err := db.FindDocument(ctx, bson.D{{Key: "patientid", Value: patientID}})
+	patient, err := db.FindDocument(ctx, bson.D{{Key: "id", Value: patientID}})
 
 	switch err {
 	case nil:

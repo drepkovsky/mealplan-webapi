@@ -379,7 +379,7 @@ components:
           description: List of ingredients used in the meal
     Patient:
       type: object
-      required: [fullName, patientId, age, allergens, ingredientPreferences]
+      required: [fullName, id, age, allergens, ingredientPreferences]
       properties:
         fullName:
           type: string
